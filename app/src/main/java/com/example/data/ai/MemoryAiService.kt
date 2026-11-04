@@ -31,7 +31,7 @@ class MemoryAiService {
                 description = "The primary object or items placed (e.g. 'Black headphones', 'School ID', 'Spare keys')"
             ),
             "location" to Schema.string(
-                description = "The specific place or container where the item is stored (e.g. 'Blue school bag', 'Second desk drawer')"
+                description = "The specific place, surface, or container where the item is stored (e.g. 'Blue school bag', 'Second desk drawer', 'Wooden desk')"
             ),
             "category" to Schema.enumeration(
                 values = MEMORY_CATEGORIES,
@@ -43,7 +43,8 @@ class MemoryAiService {
             "photoAiDescription" to Schema.string(
                 description = "Detailed visual inventory of visible objects and containers if an image was provided, or empty string if text only"
             )
-        )
+        ),
+        optionalProperties = listOf("description", "photoAiDescription")
     )
 
     private val searchAnswerSchema = Schema.obj(
@@ -96,13 +97,13 @@ class MemoryAiService {
                 appendLine("Extract the object's name, its exact storage location, category, and useful contextual notes.")
                 if (photoBitmap != null) {
                     appendLine("A photo of the item or storage space (drawer, shelf, desk, bag, cupboard) is attached.")
-                    appendLine("Automatically analyze the photo to detect visible items, containers, and landmarks.")
-                    appendLine("Include a rich visual inventory in 'photoAiDescription' so the user can search for items visible in this photo later.")
+                    appendLine("Automatically analyze the photo to detect visible items, containers, surfaces, and landmarks.")
+                    appendLine("Include a rich visual inventory in 'photoAiDescription' so the user can search for any item visible in this photo later.")
                 }
                 if (userText.isNotBlank()) {
                     appendLine("User statement: \"$userText\"")
                 } else {
-                    appendLine("The user provided a photo without text. Identify the main item(s) and the container/location shown in the photo.")
+                    appendLine("The user clicked a photo without typing text. Identify the main item(s) for 'itemName' and the visible container, surface, drawer, shelf, bag, or room for 'location'. Always provide non-empty values for both 'itemName' and 'location'.")
                 }
             }
 

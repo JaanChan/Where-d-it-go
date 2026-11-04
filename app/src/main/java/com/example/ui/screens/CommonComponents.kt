@@ -1,5 +1,11 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,15 +23,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,6 +41,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,10 +57,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.example.data.model.MEMORY_CATEGORIES
 import com.example.data.model.MemoryRecord
 import com.example.ui.theme.CardBorderSlate
@@ -63,6 +73,7 @@ import com.example.ui.theme.DeepVioletContainer
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.ElevatedSlate
+import com.example.ui.theme.MintSuccess
 import com.example.ui.theme.SoftViolet
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextSecondary
@@ -401,12 +412,47 @@ fun MemoryItemCard(
 fun EditMemoryDialog(
     memory: MemoryRecord,
     onDismiss: () -> Unit,
-    onConfirm: (itemName: String, location: String, category: String, description: String) -> Unit
+    onConfirm: (itemName: String, location: String, category: String, description: String, newPhotoBitmap: Bitmap?) -> Unit
 ) {
+    val context = LocalContext.current
     var itemName by remember(memory) { mutableStateOf(memory.itemName) }
     var location by remember(memory) { mutableStateOf(memory.location) }
     var category by remember(memory) { mutableStateOf(memory.category) }
     var description by remember(memory) { mutableStateOf(memory.description) }
+    var newPhotoBitmap by remember(memory) { mutableStateOf<Bitmap?>(null) }
+    var showCameraModal by remember { mutableStateOf(false) }
+
+    val existingBitmap = remember(memory.imageBase64) {
+        MediaHelper.decodeBase64ToBitmap(memory.imageBase64)
+    }
+    val previewBitmap = newPhotoBitmap ?: existingBitmap
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) showCameraModal = true
+    }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val bmp = MediaHelper.loadAndCompressBitmap(context, uri)
+            if (bmp != null) {
+                newPhotoBitmap = bmp
+            }
+        }
+    }
+
+    if (showCameraModal) {
+        CameraCaptureDialog(
+            onPhotoCaptured = { bmp ->
+                newPhotoBitmap = bmp
+                showCameraModal = false
+            },
+            onDismiss = { showCameraModal = false }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -467,13 +513,78 @@ fun EditMemoryDialog(
                         .fillMaxWidth()
                         .testTag("edit_memory_notes_input")
                 )
+
+                // Photo capture / update inside Edit dialog
+                if (previewBitmap != null) {
+                    Image(
+                        bitmap = previewBitmap.asImageBitmap(),
+                        contentDescription = "Memory photo preview",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, ElectricBlue.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val hasCam = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (hasCam) {
+                                showCameraModal = true
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("edit_memory_camera_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            tint = ElectricBlue,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Click Photo", color = Color.White)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("edit_memory_gallery_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            tint = MintSuccess,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Gallery", color = Color.White)
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
                     if (itemName.isNotBlank() && location.isNotBlank()) {
-                        onConfirm(itemName, location, category, description)
+                        onConfirm(itemName, location, category, description, newPhotoBitmap)
                     }
                 },
                 enabled = itemName.isNotBlank() && location.isNotBlank(),

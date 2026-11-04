@@ -151,6 +151,12 @@ class MemoryViewModel(
         _statusBannerMessage.value = null
     }
 
+    fun showStatusMessage(message: String) {
+        if (message.isNotBlank()) {
+            _statusBannerMessage.value = message
+        }
+    }
+
     fun clearExtractedDraft() {
         _extractedDraft.value = null
         _aiExtractionState.value = AiTaskState.Idle
@@ -234,15 +240,18 @@ class MemoryViewModel(
         newLocation: String,
         newCategory: String,
         newDescription: String,
+        newPhotoBitmap: Bitmap? = null,
         onComplete: () -> Unit = {}
     ) {
         viewModelScope.launch {
+            val encodedPhoto = newPhotoBitmap?.let { MediaHelper.encodeBitmapToBase64(it) }
             val result = repository.updateMemory(
                 memory = memory,
                 newItemName = newItemName,
                 newLocation = newLocation,
                 newCategory = newCategory,
-                newDescription = newDescription
+                newDescription = newDescription,
+                newImageBase64 = encodedPhoto
             )
             result.fold(
                 onSuccess = {

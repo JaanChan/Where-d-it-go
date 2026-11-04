@@ -7,18 +7,54 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import android.util.Base64
+import androidx.camera.core.ImageProxy
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.example.R
 import com.example.data.model.BorrowedItem
 import java.io.ByteArrayOutputStream
+import java.io.File
 import kotlin.math.min
 
 object MediaHelper {
+
+    fun createTempImageUri(context: Context): Uri? {
+        return try {
+            val directory = File(context.cacheDir, "camera_captures").apply {
+                if (!exists()) mkdirs()
+            }
+            val file = File.createTempFile("memory_photo_${System.currentTimeMillis()}_", ".jpg", directory)
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun imageProxyToBitmap(imageProxy: ImageProxy, maxDimension: Int = 720): Bitmap? {
+        return try {
+            val rawBitmap = imageProxy.toBitmap()
+            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+            val rotated = if (rotationDegrees != 0) {
+                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+            } else {
+                rawBitmap
+            }
+            scaleBitmap(rotated, maxDimension)
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     fun loadAndCompressBitmap(context: Context, uri: Uri, maxDimension: Int = 720): Bitmap? {
         return try {

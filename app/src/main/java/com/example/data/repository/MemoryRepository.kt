@@ -110,6 +110,14 @@ class MemoryRepository(private val db: FirebaseFirestore) {
         val uid = requireUserId()
         val docRef = db.collection("users").document(uid)
         try {
+            val snap = docRef.get().await()
+            if (!snap.exists()) {
+                ensureUserProfile(
+                    displayName = auth.currentUser?.displayName ?: "Memory Explorer",
+                    email = auth.currentUser?.email ?: "",
+                    photoUrl = auth.currentUser?.photoUrl?.toString() ?: ""
+                ).getOrThrow()
+            }
             docRef.update(
                 mapOf(
                     "borrowRemindersEnabled" to borrowRemindersEnabled,
@@ -133,6 +141,14 @@ class MemoryRepository(private val db: FirebaseFirestore) {
         val updated = (listOf(cleaned) + existingSearches.filterNot { it.equals(cleaned, ignoreCase = true) }).take(10)
         val docRef = db.collection("users").document(uid)
         try {
+            val snap = docRef.get().await()
+            if (!snap.exists()) {
+                ensureUserProfile(
+                    displayName = auth.currentUser?.displayName ?: "Memory Explorer",
+                    email = auth.currentUser?.email ?: "",
+                    photoUrl = auth.currentUser?.photoUrl?.toString() ?: ""
+                ).getOrThrow()
+            }
             docRef.update(
                 mapOf(
                     "frequentSearches" to updated,
@@ -283,7 +299,8 @@ class MemoryRepository(private val db: FirebaseFirestore) {
         newItemName: String,
         newLocation: String,
         newCategory: String,
-        newDescription: String
+        newDescription: String,
+        newImageBase64: String? = null
     ): Result<Unit> = runCatching {
         val uid = requireUserId()
         require(memory.id.isNotBlank()) { "Memory ID must not be blank" }
@@ -302,17 +319,20 @@ class MemoryRepository(private val db: FirebaseFirestore) {
             memory.previousLocations
         }
 
+        val payload = mutableMapOf<String, Any>(
+            "itemName" to newItemName.trim().take(120),
+            "location" to newLocation.trim().take(200),
+            "category" to newCategory.ifBlank { "Other" }.take(60),
+            "description" to newDescription.trim().take(1000),
+            "previousLocations" to updatedHistory.map { it.take(250) },
+            "updatedAt" to FieldValue.serverTimestamp()
+        )
+        if (newImageBase64 != null) {
+            payload["imageBase64"] = newImageBase64.take(350000)
+        }
+
         try {
-            docRef.update(
-                mapOf(
-                    "itemName" to newItemName.trim().take(120),
-                    "location" to newLocation.trim().take(200),
-                    "category" to newCategory.ifBlank { "Other" }.take(60),
-                    "description" to newDescription.trim().take(1000),
-                    "previousLocations" to updatedHistory.map { it.take(250) },
-                    "updatedAt" to FieldValue.serverTimestamp()
-                )
-            ).await()
+            docRef.update(payload).await()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

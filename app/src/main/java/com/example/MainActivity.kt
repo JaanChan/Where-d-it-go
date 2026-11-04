@@ -172,6 +172,7 @@ fun AuthenticatedAppShell(
     val borrowedItems = (borrowedState as? DataUiState.Success)?.data ?: emptyList()
 
     var currentTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
+    var openCameraInitially by rememberSaveable { mutableStateOf(false) }
     var memoryBeingEdited by remember { mutableStateOf<MemoryRecord?>(null) }
 
     if (memoryBeingEdited != null) {
@@ -179,13 +180,14 @@ fun AuthenticatedAppShell(
         EditMemoryDialog(
             memory = target,
             onDismiss = { memoryBeingEdited = null },
-            onConfirm = { newName, newLoc, newCat, newDesc ->
+            onConfirm = { newName, newLoc, newCat, newDesc, newPhotoBmp ->
                 viewModel.updateExistingMemory(
                     memory = target,
                     newItemName = newName,
                     newLocation = newLoc,
                     newCategory = newCat,
                     newDescription = newDesc,
+                    newPhotoBitmap = newPhotoBmp,
                     onComplete = { memoryBeingEdited = null }
                 )
             }
@@ -317,7 +319,14 @@ fun AuthenticatedAppShell(
                                 aiSearchState = aiSearchState,
                                 onAskQuestion = { viewModel.askWhereIsIt(it) },
                                 onClearConversation = { viewModel.clearSearchConversation() },
-                                onRememberSomethingClick = { currentTab = AppTab.ADD },
+                                onRememberSomethingClick = {
+                                    openCameraInitially = false
+                                    currentTab = AppTab.ADD
+                                },
+                                onClickPhotoQuickAction = {
+                                    openCameraInitially = true
+                                    currentTab = AppTab.ADD
+                                },
                                 onViewAllMemoriesClick = { currentTab = AppTab.MEMORIES },
                                 onViewBorrowedClick = { currentTab = AppTab.BORROWED },
                                 onEditMemory = { memoryBeingEdited = it },
@@ -335,6 +344,8 @@ fun AuthenticatedAppShell(
                                 sharedSpaces = sharedSpaces,
                                 extractedDraft = extractedDraft,
                                 aiExtractionState = aiExtractionState,
+                                openCameraInitially = openCameraInitially,
+                                onCameraInitialConsumed = { openCameraInitially = false },
                                 onRunAiExtraction = { text, bmp ->
                                     viewModel.runAiMemoryExtraction(text, bmp)
                                 },
@@ -367,8 +378,7 @@ fun AuthenticatedAppShell(
                                 onToggleReturned = { viewModel.toggleBorrowedItemReturned(it) },
                                 onDeleteBorrowedItem = { viewModel.deleteBorrowedItem(it) },
                                 onShowStatus = { msg ->
-                                    // Trigger status banner
-                                    viewModel.clearStatusBanner()
+                                    viewModel.showStatusMessage(msg)
                                 },
                                 onNavigateBack = { currentTab = AppTab.HOME }
                             )
@@ -395,7 +405,9 @@ fun AuthenticatedAppShell(
                                 onUpdateNotificationPrefs = { borrow, daily, shared ->
                                     viewModel.updateNotificationPrefs(borrow, daily, shared)
                                 },
-                                onShowStatus = {},
+                                onShowStatus = { msg ->
+                                    viewModel.showStatusMessage(msg)
+                                },
                                 onSignOut = {
                                     signOutUser(
                                         context = context,

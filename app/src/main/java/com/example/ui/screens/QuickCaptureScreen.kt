@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -20,6 +21,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,7 +42,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -62,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -76,6 +82,7 @@ import com.example.data.model.SharedSpace
 import com.example.ui.theme.CardBorderSlate
 import com.example.ui.theme.CardSlate
 import com.example.ui.theme.CoralError
+import com.example.ui.theme.DeepBlueContainer
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.ElevatedSlate
@@ -91,6 +98,8 @@ fun QuickCaptureScreen(
     sharedSpaces: List<SharedSpace>,
     extractedDraft: ExtractedMemoryDraft?,
     aiExtractionState: AiTaskState,
+    openCameraInitially: Boolean = false,
+    onCameraInitialConsumed: () -> Unit = {},
     onRunAiExtraction: (rawText: String, bitmap: Bitmap?) -> Unit,
     onSaveMemory: (
         itemName: String,
@@ -115,6 +124,7 @@ fun QuickCaptureScreen(
     var selectedSpaceId by remember { mutableStateOf("") }
     var attachedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isListeningVoice by remember { mutableStateOf(false) }
+    var showCameraModal by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
 
     // Populate structured fields when AI extraction succeeds
@@ -125,6 +135,24 @@ fun QuickCaptureScreen(
             if (extractedDraft.category.isNotBlank()) category = extractedDraft.category
             if (extractedDraft.description.isNotBlank()) description = extractedDraft.description
             if (extractedDraft.photoAiDescription.isNotBlank()) photoAiDescription = extractedDraft.photoAiDescription
+            validationError = null
+        }
+    }
+
+    // Fallback system speech recognizer activity launcher
+    val speechIntentFallbackLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isListeningVoice = false
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                .orEmpty()
+            if (spoken.isNotBlank()) {
+                naturalSentence = spoken
+                onRunAiExtraction(spoken, attachedBitmap)
+            }
         }
     }
 
@@ -151,7 +179,6 @@ fun QuickCaptureScreen(
                 val spoken = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
                 if (spoken.isNotBlank()) {
                     naturalSentence = spoken
-                    // Confirmed preference: Live speech-to-text with instant AI extraction
                     onRunAiExtraction(spoken, attachedBitmap)
                 }
             }
@@ -170,14 +197,17 @@ fun QuickCaptureScreen(
     }
 
     val startVoiceCapture = {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak where you placed the item...")
+        }
         if (speechRecognizer != null) {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            }
             isListeningVoice = true
             speechRecognizer.startListening(intent)
+        } else {
+            runCatching { speechIntentFallbackLauncher.launch(intent) }
         }
     }
 
@@ -195,28 +225,48 @@ fun QuickCaptureScreen(
             val bmp = MediaHelper.loadAndCompressBitmap(context, uri)
             if (bmp != null) {
                 attachedBitmap = bmp
-                // Confirmed preference: Auto-analyze photos to detect visible items and context
                 onRunAiExtraction(naturalSentence, bmp)
             }
-        }
-    }
-
-    // Camera capture launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bmp ->
-        if (bmp != null) {
-            val scaled = MediaHelper.scaleBitmap(bmp, 720)
-            attachedBitmap = scaled
-            // Confirmed preference: Auto-analyze photos to detect visible items and context
-            onRunAiExtraction(naturalSentence, scaled)
         }
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) cameraLauncher.launch(null)
+        if (granted) {
+            showCameraModal = true
+        }
+    }
+
+    val triggerCameraOpen = {
+        val hasCam = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+        if (hasCam) {
+            showCameraModal = true
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    LaunchedEffect(openCameraInitially) {
+        if (openCameraInitially) {
+            onCameraInitialConsumed()
+            triggerCameraOpen()
+        }
+    }
+
+    if (showCameraModal) {
+        CameraCaptureDialog(
+            onPhotoCaptured = { bmp ->
+                attachedBitmap = bmp
+                showCameraModal = false
+                // Auto-analyze photo with Gemini AI to detect visible items and storage context
+                onRunAiExtraction(naturalSentence, bmp)
+            },
+            onDismiss = { showCameraModal = false }
+        )
     }
 
     Column(
@@ -234,10 +284,82 @@ fun QuickCaptureScreen(
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Say or type where you put an object, or photograph a drawer, bag, or shelf. Gemini AI extracts the item and location automatically.",
+            text = "Click a photo of your item, drawer, bag, or shelf—or speak/type where you put it. Gemini AI extracts the item and location automatically.",
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary
         )
+
+        // Prominent Camera Action Banner to Click Photos of Things
+        Surface(
+            color = DeepBlueContainer,
+            shape = RoundedCornerShape(20.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.5.dp,
+                Brush.horizontalGradient(listOf(ElectricBlue, ElectricViolet))
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(ElectricBlue.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoCamera,
+                            contentDescription = null,
+                            tint = ElectricBlue,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Click Photo of Item or Drawer",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Snap keys, IDs, desks, shelves, or bags for instant AI memory",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Button(
+                    onClick = triggerCameraOpen,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ElectricBlue,
+                        contentColor = Color(0xFF0B0D13)
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier.testTag("hero_click_photo_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Click Photo", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
 
         // 1. Natural Language + Voice + Photo Capture Box
         Surface(
@@ -313,17 +435,7 @@ fun QuickCaptureScreen(
                     }
 
                     OutlinedButton(
-                        onClick = {
-                            val hasCam = ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.CAMERA
-                            ) == PackageManager.PERMISSION_GRANTED
-                            if (hasCam) {
-                                cameraLauncher.launch(null)
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        },
+                        onClick = triggerCameraOpen,
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
@@ -331,7 +443,7 @@ fun QuickCaptureScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Snap Photo",
+                            contentDescription = "Click Photo",
                             tint = ElectricBlue,
                             modifier = Modifier.size(18.dp)
                         )
@@ -361,35 +473,60 @@ fun QuickCaptureScreen(
                     }
                 }
 
-                // Attached Photo Preview
+                // Attached Photo Preview with Retake & Remove
                 if (attachedBitmap != null) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Image(
-                            bitmap = attachedBitmap!!.asImageBitmap(),
-                            contentDescription = "Attached memory photo",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .border(1.dp, ElectricBlue.copy(alpha = 0.6f), RoundedCornerShape(14.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                        IconButton(
-                            onClick = {
-                                attachedBitmap = null
-                                photoAiDescription = ""
-                            },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .background(ElevatedSlate.copy(alpha = 0.85f), RoundedCornerShape(50))
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove photo",
-                                tint = Color.White
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Image(
+                                bitmap = attachedBitmap!!.asImageBitmap(),
+                                contentDescription = "Captured memory photo",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .border(1.5.dp, ElectricBlue.copy(alpha = 0.7f), RoundedCornerShape(14.dp)),
+                                contentScale = ContentScale.Crop
                             )
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                IconButton(
+                                    onClick = triggerCameraOpen,
+                                    modifier = Modifier
+                                        .background(ElevatedSlate.copy(alpha = 0.88f), RoundedCornerShape(50))
+                                        .testTag("retake_photo_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Retake photo",
+                                        tint = ElectricBlue
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        attachedBitmap = null
+                                        photoAiDescription = ""
+                                    },
+                                    modifier = Modifier
+                                        .background(ElevatedSlate.copy(alpha = 0.88f), RoundedCornerShape(50))
+                                        .testTag("remove_photo_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove photo",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
                         }
+                        Text(
+                            text = "Photo attached • Gemini AI analyzes visible items & storage details",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MintSuccess
+                        )
                     }
                 }
 
@@ -591,7 +728,7 @@ fun QuickCaptureScreen(
                 Button(
                     onClick = {
                         if (itemName.isBlank() || location.isBlank()) {
-                            validationError = "Please enter both an item name and its location (or use AI extraction above)."
+                            validationError = "Please enter both an item name and its location (or click 'Extract Item & Location with AI' above)."
                         } else {
                             onSaveMemory(
                                 itemName,
