@@ -1,0 +1,6 @@
+{
+  "name": "Where'd It Go?",
+  "description": "An AI-powered personal memory assistant that helps you remember where you placed everyday belongings, track borrowed items, and share household memory spaces.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

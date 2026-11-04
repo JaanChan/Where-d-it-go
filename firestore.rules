@@ -1,0 +1,373 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // 1. UserProfile validation helper
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() <= 150 &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             (!('frequentSearches' in data) || (
+               data.frequentSearches is list &&
+               data.frequentSearches.size() <= 15 &&
+               (data.frequentSearches.size() == 0 || (data.frequentSearches[0] is string && data.frequentSearches[0].size() <= 120))
+             )) &&
+             data.borrowRemindersEnabled is bool &&
+             data.dailySummaryEnabled is bool &&
+             data.sharedUpdatesEnabled is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 2. MemoryRecord validation helper
+    function isValidMemoryRecord(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.addedByName is string && data.addedByName.size() >= 1 && data.addedByName.size() <= 100 &&
+             data.itemName is string && data.itemName.size() >= 1 && data.itemName.size() <= 120 &&
+             data.location is string && data.location.size() >= 1 && data.location.size() <= 200 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+             data.description is string && data.description.size() <= 1000 &&
+             (!('imageBase64' in data) || data.imageBase64 == null || (data.imageBase64 is string && data.imageBase64.size() <= 350000)) &&
+             (!('photoAiDescription' in data) || data.photoAiDescription == null || (data.photoAiDescription is string && data.photoAiDescription.size() <= 1000)) &&
+             (!('previousLocations' in data) || (
+               data.previousLocations is list &&
+               data.previousLocations.size() <= 20 &&
+               (data.previousLocations.size() == 0 || (data.previousLocations[0] is string && data.previousLocations[0].size() <= 250))
+             )) &&
+             data.searchCount is int && data.searchCount >= 0 &&
+             data.spaceId is string && data.spaceId.size() <= 128 &&
+             (!('memberUids' in data) || (
+               data.memberUids is list &&
+               data.memberUids.size() <= 20 &&
+               (data.memberUids.size() == 0 || (data.memberUids[0] is string && data.memberUids[0].size() <= 128))
+             )) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 3. BorrowedItem validation helper
+    function isValidBorrowedItem(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.itemName is string && data.itemName.size() >= 1 && data.itemName.size() <= 120 &&
+             data.borrowerName is string && data.borrowerName.size() >= 1 && data.borrowerName.size() <= 100 &&
+             (!('borrowerContact' in data) || data.borrowerContact == null || (data.borrowerContact is string && data.borrowerContact.size() <= 150)) &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500)) &&
+             data.borrowDateMillis is int && data.borrowDateMillis >= 0 &&
+             data.expectedReturnMillis is int && data.expectedReturnMillis >= 0 &&
+             data.isReturned is bool &&
+             data.returnedAtMillis is int && data.returnedAtMillis >= 0 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 4. SharedSpace validation helper
+    function isValidSharedSpace(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 100 &&
+             data.inviteCode is string && data.inviteCode.size() >= 4 && data.inviteCode.size() <= 16 &&
+             data.memberUids is list && data.memberUids.size() >= 1 && data.memberUids.size() <= 20 &&
+             data.memberUids[0] is string && data.memberUids[0].size() <= 128 &&
+             data.memberNames is list && data.memberNames.size() >= 1 && data.memberNames.size() <= 20 &&
+             data.memberNames[0] is string && data.memberNames[0].size() <= 100 &&
+             data.invitedEmails is list && data.invitedEmails.size() <= 20 &&
+             (data.invitedEmails.size() == 0 || (data.invitedEmails[0] is string && data.invitedEmails[0].size() <= 150)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 5. SpaceInviteCode validation helper
+    function isValidSpaceInviteCode(data) {
+      return data.inviteCode is string && data.inviteCode.size() >= 4 && data.inviteCode.size() <= 16 &&
+             data.spaceId is string && data.spaceId.size() >= 1 && data.spaceId.size() <= 128 &&
+             data.spaceName is string && data.spaceName.size() >= 1 && data.spaceName.size() <= 100 &&
+             data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 100 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isInvitedByVerifiedEmail(spaceData) {
+      return request.auth.token.email != null &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.email in spaceData.invitedEmails;
+    }
+
+    // /users/{userId}
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'email',
+                         'borrowRemindersEnabled', 'dailySummaryEnabled', 'sharedUpdatesEnabled',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'email', 'photoUrl', 'frequentSearches',
+                         'borrowRemindersEnabled', 'dailySummaryEnabled', 'sharedUpdatesEnabled',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'email', 'photoUrl', 'frequentSearches',
+                         'borrowRemindersEnabled', 'dailySummaryEnabled', 'sharedUpdatesEnabled',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+      // /users/{userId}/memories/{memoryId}
+      match /memories/{memoryId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(memoryId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId && existing().userId == request.auth.uid;
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(memoryId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll([
+                           'userId', 'addedByName', 'itemName', 'location',
+                           'category', 'description', 'searchCount', 'spaceId',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'addedByName', 'itemName', 'location',
+                           'category', 'description', 'imageBase64', 'photoAiDescription',
+                           'previousLocations', 'searchCount', 'spaceId', 'memberUids',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidMemoryRecord(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(memoryId) &&
+                         isValidMemoryRecord(incoming()) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'addedByName', 'itemName', 'location', 'category',
+                           'description', 'imageBase64', 'photoAiDescription',
+                           'previousLocations', 'searchCount', 'spaceId', 'memberUids',
+                           'updatedAt'
+                         ]);
+
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(memoryId) && request.auth.uid == userId;
+      }
+
+      // /users/{userId}/borrowed_items/{borrowId}
+      match /borrowed_items/{borrowId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(borrowId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId && existing().userId == request.auth.uid;
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(borrowId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll([
+                           'userId', 'itemName', 'borrowerName',
+                           'borrowDateMillis', 'expectedReturnMillis',
+                           'isReturned', 'returnedAtMillis',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'itemName', 'borrowerName', 'borrowerContact',
+                           'notes', 'borrowDateMillis', 'expectedReturnMillis',
+                           'isReturned', 'returnedAtMillis',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidBorrowedItem(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(borrowId) &&
+                         isValidBorrowedItem(incoming()) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'itemName', 'borrowerName', 'borrowerContact', 'notes',
+                           'borrowDateMillis', 'expectedReturnMillis',
+                           'isReturned', 'returnedAtMillis', 'updatedAt'
+                         ]);
+
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(borrowId) && request.auth.uid == userId;
+      }
+    }
+
+    // /shared_spaces/{spaceId}
+    match /shared_spaces/{spaceId} {
+      allow get: if isSignedIn() && isValidId(spaceId) && (
+        request.auth.uid in existing().memberUids ||
+        isInvitedByVerifiedEmail(existing())
+      );
+
+      allow list: if isSignedIn() && (
+        request.auth.uid in existing().memberUids ||
+        isInvitedByVerifiedEmail(existing())
+      );
+
+      allow create: if isSignedIn() &&
+                       isValidId(spaceId) &&
+                       incoming().ownerId == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().keys().hasAll([
+                         'name', 'ownerId', 'ownerName', 'inviteCode',
+                         'memberUids', 'memberNames', 'invitedEmails',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'name', 'ownerId', 'ownerName', 'inviteCode',
+                         'memberUids', 'memberNames', 'invitedEmails',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidSharedSpace(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(spaceId) &&
+                       isValidSharedSpace(incoming()) &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().inviteCode == existing().inviteCode &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Existing member or owner updates space metadata / invites
+                         (request.auth.uid in existing().memberUids &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'name', 'memberUids', 'memberNames', 'invitedEmails', 'updatedAt'
+                          ])) ||
+                         // Action 2: Authenticated user joins space by adding their UID to memberUids
+                         (request.auth.uid in incoming().memberUids &&
+                          incoming().name == existing().name &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'memberUids', 'memberNames', 'invitedEmails', 'updatedAt'
+                          ]))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(spaceId) && existing().ownerId == request.auth.uid;
+
+      // /shared_spaces/{spaceId}/memories/{memoryId}
+      match /memories/{memoryId} {
+        allow get: if isSignedIn() &&
+                      isValidId(spaceId) &&
+                      isValidId(memoryId) &&
+                      request.auth.uid in existing().memberUids &&
+                      exists(/databases/$(database)/documents/shared_spaces/$(spaceId)) &&
+                      request.auth.uid in get(/databases/$(database)/documents/shared_spaces/$(spaceId)).data.memberUids;
+
+        // Cost-optimized list: evaluates denormalized memberUids without get() inside list
+        allow list: if isSignedIn() &&
+                       request.auth.uid in existing().memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(spaceId) &&
+                         isValidId(memoryId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().spaceId == spaceId &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().keys().hasAll([
+                           'userId', 'addedByName', 'itemName', 'location',
+                           'category', 'description', 'searchCount', 'spaceId',
+                           'memberUids', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'addedByName', 'itemName', 'location',
+                           'category', 'description', 'imageBase64', 'photoAiDescription',
+                           'previousLocations', 'searchCount', 'spaceId', 'memberUids',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidMemoryRecord(incoming()) &&
+                         exists(/databases/$(database)/documents/shared_spaces/$(spaceId)) &&
+                         request.auth.uid in get(/databases/$(database)/documents/shared_spaces/$(spaceId)).data.memberUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(spaceId) &&
+                         isValidId(memoryId) &&
+                         isValidMemoryRecord(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().spaceId == existing().spaceId &&
+                         incoming().createdAt == existing().createdAt &&
+                         request.auth.uid in existing().memberUids &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'addedByName', 'itemName', 'location', 'category',
+                           'description', 'imageBase64', 'photoAiDescription',
+                           'previousLocations', 'searchCount', 'memberUids',
+                           'updatedAt'
+                         ]) &&
+                         exists(/databases/$(database)/documents/shared_spaces/$(spaceId)) &&
+                         request.auth.uid in get(/databases/$(database)/documents/shared_spaces/$(spaceId)).data.memberUids;
+
+        allow delete: if isSignedIn() &&
+                         isValidId(spaceId) &&
+                         isValidId(memoryId) &&
+                         request.auth.uid in existing().memberUids &&
+                         exists(/databases/$(database)/documents/shared_spaces/$(spaceId)) &&
+                         request.auth.uid in get(/databases/$(database)/documents/shared_spaces/$(spaceId)).data.memberUids;
+      }
+    }
+
+    // /space_codes/{inviteCode} - Zero-PII invite code lookup (get only, no list scraping)
+    match /space_codes/{inviteCode} {
+      allow get: if isSignedIn() && isValidId(inviteCode);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       isValidId(inviteCode) &&
+                       incoming().inviteCode == inviteCode &&
+                       incoming().ownerId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'inviteCode', 'spaceId', 'spaceName',
+                         'ownerId', 'ownerName', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'inviteCode', 'spaceId', 'spaceName',
+                         'ownerId', 'ownerName', 'createdAt'
+                       ]) &&
+                       isValidSpaceInviteCode(incoming()) &&
+                       existsAfter(/databases/$(database)/documents/shared_spaces/$(incoming().spaceId));
+
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(inviteCode) && existing().ownerId == request.auth.uid;
+    }
+  }
+}

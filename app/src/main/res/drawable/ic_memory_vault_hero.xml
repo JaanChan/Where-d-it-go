@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="320dp"
+    android:height="160dp"
+    android:viewportWidth="320"
+    android:viewportHeight="160">
+    <path
+        android:pathData="M16,0L304,0A16,16 0,0 1,320 16L320,144A16,16 0,0 1,304 160L16,160A16,16 0,0 1,0 144L0,16A16,16 0,0 1,16 0z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="320"
+                android:endY="160"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#1D1836" />
+                <item android:offset="0.5" android:color="#131829" />
+                <item android:offset="1.0" android:color="#0F172A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Glowing Orbital Rings -->
+    <path
+        android:strokeColor="#338B5CF6"
+        android:strokeWidth="1.5"
+        android:pathData="M160,80m-64,0a64,64 0,1 1,128 0a64,64 0,1 1,-128 0" />
+    <path
+        android:strokeColor="#4438BDF8"
+        android:strokeWidth="1.5"
+        android:pathData="M160,80m-42,0a42,42 0,1 1,84 0a42,42 0,1 1,-84 0" />
+    <!-- Central Memory Pin Node -->
+    <path
+        android:fillColor="#8B5CF6"
+        android:pathData="M160,48c-11.05,0 -20,8.95 -20,20c0,15 20,36 20,36s20,-21 20,-36c0,-11.05 -8.95,-20 -20,-20z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M160,68m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <!-- Satellite Memory Nodes -->
+    <path
+        android:fillColor="#A78BFA"
+        android:pathData="M86,52m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M236,106m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <path
+        android:fillColor="#F472B6"
+        android:pathData="M226,44m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M96,114m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+</vector>

@@ -1,0 +1,338 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile and notification preferences",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated user UID matching document ID"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "User profile avatar URL"
+        },
+        "frequentSearches": {
+          "type": "array",
+          "description": "Bounded list of recent/frequent search queries (max 15)"
+        },
+        "borrowRemindersEnabled": {
+          "type": "boolean",
+          "description": "Enable notifications for overdue borrowed items"
+        },
+        "dailySummaryEnabled": {
+          "type": "boolean",
+          "description": "Enable optional daily memory summary notifications"
+        },
+        "sharedUpdatesEnabled": {
+          "type": "boolean",
+          "description": "Enable notifications for shared space updates"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "borrowRemindersEnabled",
+        "dailySummaryEnabled",
+        "sharedUpdatesEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MemoryRecord": {
+      "title": "MemoryRecord",
+      "description": "A recorded physical item location memory with history and optional photo",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the user who created the memory"
+        },
+        "addedByName": {
+          "type": "string",
+          "description": "Display name of the user who recorded the memory"
+        },
+        "itemName": {
+          "type": "string",
+          "description": "Extracted or entered name of the item"
+        },
+        "location": {
+          "type": "string",
+          "description": "Current recorded location of the item"
+        },
+        "category": {
+          "type": "string",
+          "description": "Item category (Keys, ID & Cards, Electronics, Documents, Bag & Clothes, Books, Household, Other)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional context notes or original natural language phrase"
+        },
+        "imageBase64": {
+          "type": "string",
+          "description": "Optional compressed thumbnail encoded as base64"
+        },
+        "photoAiDescription": {
+          "type": "string",
+          "description": "AI-extracted visual description of the photographed drawer, bag, or shelf"
+        },
+        "previousLocations": {
+          "type": "array",
+          "description": "Bounded list of previous recorded locations with timestamps (max 20)"
+        },
+        "searchCount": {
+          "type": "integer",
+          "description": "Number of times this memory was matched in search"
+        },
+        "spaceId": {
+          "type": "string",
+          "description": "Empty for private memories, or the sharedSpace ID"
+        },
+        "memberUids": {
+          "type": "array",
+          "description": "Bounded list of authorized UIDs for shared space memories (max 20)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": [
+        "userId",
+        "addedByName",
+        "itemName",
+        "location",
+        "category",
+        "description",
+        "searchCount",
+        "spaceId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BorrowedItem": {
+      "title": "BorrowedItem",
+      "description": "Tracker record for an item lent to or borrowed by someone",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the owner tracking the lent item"
+        },
+        "itemName": {
+          "type": "string",
+          "description": "Name of the lent item"
+        },
+        "borrowerName": {
+          "type": "string",
+          "description": "Name of the person who borrowed the item"
+        },
+        "borrowerContact": {
+          "type": "string",
+          "description": "Optional contact info or note for the borrower"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes about condition or context"
+        },
+        "borrowDateMillis": {
+          "type": "integer",
+          "description": "Epoch milliseconds when item was borrowed"
+        },
+        "expectedReturnMillis": {
+          "type": "integer",
+          "description": "Epoch milliseconds when item is expected to be returned"
+        },
+        "isReturned": {
+          "type": "boolean",
+          "description": "Whether the item has been returned"
+        },
+        "returnedAtMillis": {
+          "type": "integer",
+          "description": "Epoch milliseconds when item was marked returned (0 if not returned)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": [
+        "userId",
+        "itemName",
+        "borrowerName",
+        "borrowDateMillis",
+        "expectedReturnMillis",
+        "isReturned",
+        "returnedAtMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SharedSpace": {
+      "title": "SharedSpace",
+      "description": "Collaborative memory space for family members or roommates",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the shared space"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the user who created the shared space"
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the owner"
+        },
+        "inviteCode": {
+          "type": "string",
+          "description": "6-character invite code for joining"
+        },
+        "memberUids": {
+          "type": "array",
+          "description": "Bounded list of member UIDs (max 20)"
+        },
+        "memberNames": {
+          "type": "array",
+          "description": "Bounded list of member display names (max 20)"
+        },
+        "invitedEmails": {
+          "type": "array",
+          "description": "Bounded list of invited member email addresses (max 20)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": [
+        "name",
+        "ownerId",
+        "ownerName",
+        "inviteCode",
+        "memberUids",
+        "memberNames",
+        "invitedEmails",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SpaceInviteCode": {
+      "title": "SpaceInviteCode",
+      "description": "Publicly resolvable invite code directory mapping a 6-character code to a SharedSpace ID without exposing PII",
+      "type": "object",
+      "properties": {
+        "inviteCode": {
+          "type": "string",
+          "description": "6-character alphanumeric invite code"
+        },
+        "spaceId": {
+          "type": "string",
+          "description": "Referenced shared_spaces document ID"
+        },
+        "spaceName": {
+          "type": "string",
+          "description": "Name of the shared space"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Owner UID"
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Owner display name"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": [
+        "inviteCode",
+        "spaceId",
+        "spaceName",
+        "ownerId",
+        "ownerName",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Per-user private profile and notification settings"
+    },
+    "/users/{userId}/memories/{memoryId}": {
+      "schema": {
+        "$ref": "#/entities/MemoryRecord"
+      },
+      "description": "Private personal memories scoped to a single user"
+    },
+    "/users/{userId}/borrowed_items/{borrowId}": {
+      "schema": {
+        "$ref": "#/entities/BorrowedItem"
+      },
+      "description": "Borrowed and lent items tracked by a user"
+    },
+    "/shared_spaces/{spaceId}": {
+      "schema": {
+        "$ref": "#/entities/SharedSpace"
+      },
+      "description": "Shared memory spaces for families and roommates"
+    },
+    "/shared_spaces/{spaceId}/memories/{memoryId}": {
+      "schema": {
+        "$ref": "#/entities/MemoryRecord"
+      },
+      "description": "Shared memories recorded inside a collaborative space"
+    },
+    "/space_codes/{inviteCode}": {
+      "schema": {
+        "$ref": "#/entities/SpaceInviteCode"
+      },
+      "description": "Lookup documents mapping 6-character invite codes to shared space IDs"
+    }
+  }
+}
