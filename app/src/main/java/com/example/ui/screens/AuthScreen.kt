@@ -74,9 +74,10 @@ fun AuthScreen(
     val credentialManager = remember(context) { CredentialManager.create(context) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var autoSignInJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     LaunchedEffect(Unit) {
-        attemptAutoSignIn(
+        autoSignInJob = attemptAutoSignIn(
             context = context,
             credentialManager = credentialManager,
             onAuthSuccess = onAuthSuccess,
@@ -218,6 +219,7 @@ fun AuthScreen(
 
             Button(
                 onClick = {
+                    autoSignInJob?.cancel()
                     isLoading = true
                     errorMessage = null
                     onGoogleSignInClicked(

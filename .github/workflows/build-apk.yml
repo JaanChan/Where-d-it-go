@@ -35,17 +35,21 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Prepare .env, debug.keystore, and google-services.json
+      - name: Prepare .env, Firebase Registered debug.keystore, and google-services.json
         run: |
           if [ ! -f .env ] && [ -f .env.example ]; then
             cp .env.example .env
           fi
-          if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
-            base64 -i -d debug.keystore.base64 > debug.keystore || base64 -d debug.keystore.base64 > debug.keystore
-          fi
-          if [ ! -f debug.keystore ]; then
-            keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          # CRITICAL: Write the exact project debug.keystore whose SHA-1 (5FE5248892868582458C39791CFD686FA11E0F29)
+          # and SHA-256 (5EBC85D284ECBD5764A2B7120C008556A7362B1EDDB34A4C22580B632D62585A) are registered in Firebase
+          # for Google Sign-In (CredentialManager) and App Check!
+          cat << 'KEYSTORE_EOF' > debug.keystore.b64
+          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
+          KEYSTORE_EOF
+          tr -d ' \t\n\r' < debug.keystore.b64 | base64 -d > debug.keystore
+          rm -f debug.keystore.b64
+          keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey | grep -E "SHA1|SHA256"
+
           if [ ! -f app/google-services.json ]; then
             cat << 'EOF' > app/google-services.json
           {
