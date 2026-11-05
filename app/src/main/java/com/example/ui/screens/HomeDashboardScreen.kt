@@ -44,11 +44,9 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.WarningAmber
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,7 +65,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -87,13 +84,16 @@ import com.example.ui.theme.CardSlate
 import com.example.ui.theme.CoralError
 import com.example.ui.theme.DeepBlueContainer
 import com.example.ui.theme.DeepVioletContainer
+import com.example.ui.theme.DynamicThemeState
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.MintSuccess
 import com.example.ui.theme.SoftViolet
 import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.buildAccentGradientBrush
 import com.example.ui.viewmodel.AiTaskState
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -119,6 +119,7 @@ fun HomeDashboardScreen(
     onClearConversation: () -> Unit,
     onRememberSomethingClick: () -> Unit,
     onClickPhotoQuickAction: () -> Unit = {},
+    onOpenThemeStudio: () -> Unit = {},
     onViewAllMemoriesClick: () -> Unit,
     onViewBorrowedClick: () -> Unit,
     onEditMemory: (MemoryRecord) -> Unit,
@@ -218,6 +219,10 @@ fun HomeDashboardScreen(
         sharedSpaces.associate { it.id to it.name }
     }
 
+    val firstName = remember(userName) {
+        userName.trim().substringBefore(" ").ifBlank { "Friend" }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -225,39 +230,109 @@ fun HomeDashboardScreen(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // 1. Greeting & Tagline
+        // 1. Greeting, Theme Pill & Live Vault Overview Strip
         item {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Surface(
-                        color = ElectricViolet.copy(alpha = 0.18f),
-                        shape = RoundedCornerShape(50)
+                        color = DeepVioletContainer,
+                        shape = RoundedCornerShape(50),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ElectricViolet.copy(alpha = 0.4f))
                     ) {
-                        Text(
-                            text = "EXTERNAL MEMORY VAULT",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = SoftViolet,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = SoftViolet,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "EXTERNAL MEMORY VAULT",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = SoftViolet,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Active Theme & Gradient Indicator Pill
+                    Surface(
+                        onClick = onOpenThemeStudio,
+                        color = CardSlate,
+                        shape = RoundedCornerShape(50),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, buildAccentGradientBrush())
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = null,
+                                tint = ElectricBlue,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = DynamicThemeState.gradientPreset.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Hey! What are we looking for?",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Ask naturally about any item, photo, or borrowed belonging.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
+
+                Column {
+                    Text(
+                        text = "Hey $firstName! What are we looking for?",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Ask naturally about any saved item, photo, or borrowed belonging.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
+
+                // Quick Metrics Strip
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    DashboardStatPill(
+                        value = allMemories.size.toString(),
+                        label = "Memories",
+                        accent = SoftViolet,
+                        onClick = onViewAllMemoriesClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                    DashboardStatPill(
+                        value = sharedSpaces.size.toString(),
+                        label = "Spaces",
+                        accent = ElectricBlue,
+                        onClick = onViewAllMemoriesClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                    DashboardStatPill(
+                        value = activeBorrowed.size.toString(),
+                        label = "Lent Out",
+                        accent = if (activeBorrowed.any { it.isOverdue() }) CoralError else MintSuccess,
+                        onClick = onViewBorrowedClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
 
@@ -265,12 +340,10 @@ fun HomeDashboardScreen(
         item {
             Surface(
                 color = CardSlate,
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(26.dp),
                 border = androidx.compose.foundation.BorderStroke(
-                    width = 1.5.dp,
-                    brush = Brush.horizontalGradient(
-                        listOf(ElectricViolet.copy(alpha = 0.7f), ElectricBlue.copy(alpha = 0.7f))
-                    )
+                    width = 1.8.dp,
+                    brush = buildAccentGradientBrush()
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -285,11 +358,20 @@ fun HomeDashboardScreen(
                             )
                         },
                         leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = "AI Search",
-                                tint = ElectricBlue
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(buildAccentGradientBrush()),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "AI Search",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         },
                         trailingIcon = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -358,9 +440,11 @@ fun HomeDashboardScreen(
                             focusedBorderColor = ElectricBlue,
                             unfocusedBorderColor = CardBorderSlate,
                             focusedContainerColor = ElevatedSlate,
-                            unfocusedContainerColor = ElevatedSlate
+                            unfocusedContainerColor = ElevatedSlate,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
                         ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("ai_search_input")
@@ -488,19 +572,16 @@ fun HomeDashboardScreen(
             }
         }
 
-        // 3. Prominent "Remember Something" & "Click Photo of Item" Hero Actions
+        // 3. Prominent "Remember Something" (Gradient Fill) & "Click Photo of Item" Hero Actions
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = onRememberSomethingClick,
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ElectricViolet,
-                        contentColor = Color.White
-                    ),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(buildAccentGradientBrush())
+                        .clickable { onRememberSomethingClick() }
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
                         .testTag("remember_something_button")
                 ) {
                     Row(
@@ -508,19 +589,22 @@ fun HomeDashboardScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
+                                    .size(46.dp)
                                     .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.18f)),
+                                    .background(Color.White.copy(alpha = 0.22f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.AddCircleOutline,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(26.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
@@ -534,7 +618,7 @@ fun HomeDashboardScreen(
                                 Text(
                                     text = "Type, speak, or snap a photo of where you placed an item",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.85f)
+                                    color = Color.White.copy(alpha = 0.9f)
                                 )
                             }
                         }
@@ -549,10 +633,10 @@ fun HomeDashboardScreen(
                 // Direct Camera Action Button to Click Photos of Things
                 Surface(
                     color = DeepBlueContainer,
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(20.dp),
                     border = androidx.compose.foundation.BorderStroke(
-                        1.2.dp,
-                        ElectricBlue.copy(alpha = 0.65f)
+                        1.5.dp,
+                        buildAccentGradientBrush()
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -572,15 +656,15 @@ fun HomeDashboardScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .size(42.dp)
                                     .clip(CircleShape)
-                                    .background(ElectricBlue.copy(alpha = 0.2f)),
+                                    .background(buildAccentGradientBrush()),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.PhotoCamera,
                                     contentDescription = null,
-                                    tint = ElectricBlue,
+                                    tint = Color.White,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -589,7 +673,7 @@ fun HomeDashboardScreen(
                                 Text(
                                     text = "Click Photo of Item or Drawer",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
+                                    color = TextPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
@@ -629,12 +713,12 @@ fun HomeDashboardScreen(
                             Text(
                                 text = "Borrowed Items Awaiting Return (${activeBorrowed.size})",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                         TextButton(onClick = onViewBorrowedClick) {
-                            Text("Manage", color = SoftViolet)
+                            Text("Manage", color = SoftViolet, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -660,7 +744,7 @@ fun HomeDashboardScreen(
                                         Text(
                                             text = borrowed.itemName,
                                             style = MaterialTheme.typography.titleSmall,
-                                            color = Color.White,
+                                            color = TextPrimary,
                                             fontWeight = FontWeight.Bold
                                         )
                                         if (isOverdue) {
@@ -685,7 +769,7 @@ fun HomeDashboardScreen(
                                     )
                                 }
                                 TextButton(onClick = { onMarkBorrowReturned(borrowed) }) {
-                                    Text("Returned", color = MintSuccess)
+                                    Text("Returned", color = MintSuccess, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -709,7 +793,7 @@ fun HomeDashboardScreen(
                         Text(
                             text = "Frequently Searched Belongings",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -732,7 +816,7 @@ fun HomeDashboardScreen(
                                     Text(
                                         text = item.itemName,
                                         style = MaterialTheme.typography.titleSmall,
-                                        color = Color.White,
+                                        color = TextPrimary,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
@@ -758,12 +842,12 @@ fun HomeDashboardScreen(
                 Text(
                     text = "Recently Remembered Items (${allMemories.size})",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontWeight = FontWeight.Bold
                 )
                 if (allMemories.isNotEmpty()) {
                     TextButton(onClick = onViewAllMemoriesClick) {
-                        Text("Full Timeline", color = SoftViolet)
+                        Text("Full Timeline", color = SoftViolet, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -773,30 +857,38 @@ fun HomeDashboardScreen(
             item {
                 Surface(
                     color = CardSlate,
-                    shape = RoundedCornerShape(20.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderSlate),
+                    shape = RoundedCornerShape(22.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, buildAccentGradientBrush()),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = SoftViolet,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(buildAccentGradientBrush()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "No Memories Recorded Yet",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tap \"Remember Something\" to record your keys, school ID, charger, or photograph a drawer.",
+                            text = "Tap \"Remember Something\" or \"Click Photo\" to record your keys, school ID, charger, or photograph a drawer.",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
@@ -812,6 +904,40 @@ fun HomeDashboardScreen(
                     onDelete = onDeleteMemory
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DashboardStatPill(
+    value: String,
+    label: String,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        color = CardSlate,
+        shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderSlate),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                color = accent,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSecondary
+            )
         }
     }
 }
@@ -874,7 +1000,7 @@ private fun AiSearchTurnCard(
             Text(
                 text = turn.answer,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White
+                color = TextPrimary
             )
 
             if (turn.matchedMemories.isNotEmpty()) {

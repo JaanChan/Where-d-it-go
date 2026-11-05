@@ -76,7 +76,9 @@ import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.MintSuccess
 import com.example.ui.theme.SoftViolet
 import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.buildAccentGradientBrush
 import com.example.util.MediaHelper
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -111,7 +113,7 @@ fun MemoryItemCard(
                 Text(
                     text = memory.itemName,
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White
+                    color = TextPrimary
                 )
             },
             text = {
@@ -141,7 +143,7 @@ fun MemoryItemCard(
             },
             confirmButton = {
                 TextButton(onClick = { showPhotoModal = false }) {
-                    Text("Close", color = SoftViolet)
+                    Text("Close", color = SoftViolet, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -149,7 +151,7 @@ fun MemoryItemCard(
 
     Surface(
         color = CardSlate,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderSlate),
         modifier = modifier
             .fillMaxWidth()
@@ -172,7 +174,7 @@ fun MemoryItemCard(
                             modifier = Modifier
                                 .size(58.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .border(1.dp, ElectricViolet.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                .border(1.5.dp, buildAccentGradientBrush(), RoundedCornerShape(14.dp))
                                 .clickable { showPhotoModal = true },
                             contentScale = ContentScale.Crop
                         )
@@ -182,13 +184,13 @@ fun MemoryItemCard(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(DeepVioletContainer),
+                                .background(buildAccentGradientBrush()),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
                                 contentDescription = null,
-                                tint = SoftViolet,
+                                tint = Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -203,7 +205,7 @@ fun MemoryItemCard(
                             Text(
                                 text = memory.itemName,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -308,7 +310,8 @@ fun MemoryItemCard(
                 ) {
                     Surface(
                         color = ElevatedSlate,
-                        shape = RoundedCornerShape(6.dp)
+                        shape = RoundedCornerShape(6.dp),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, CardBorderSlate)
                     ) {
                         Text(
                             text = memory.category,
@@ -461,7 +464,7 @@ fun EditMemoryDialog(
             Text(
                 text = "Update Memory",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White
+                color = TextPrimary
             )
         },
         text = {
@@ -555,7 +558,7 @@ fun EditMemoryDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Click Photo", color = Color.White)
+                        Text("Click Photo", color = TextPrimary)
                     }
 
                     OutlinedButton(
@@ -575,7 +578,7 @@ fun EditMemoryDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Gallery", color = Color.White)
+                        Text("Gallery", color = TextPrimary)
                     }
                 }
             }
@@ -588,7 +591,7 @@ fun EditMemoryDialog(
                     }
                 },
                 enabled = itemName.isNotBlank() && location.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet),
+                colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet, contentColor = Color.White),
                 modifier = Modifier.testTag("save_edited_memory_button")
             ) {
                 Text("Save Changes")

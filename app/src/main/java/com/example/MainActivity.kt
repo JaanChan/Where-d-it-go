@@ -2,10 +2,14 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -15,15 +19,22 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Handshake
@@ -46,11 +57,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -67,21 +78,23 @@ import com.example.ui.screens.EditMemoryDialog
 import com.example.ui.screens.HomeDashboardScreen
 import com.example.ui.screens.ProfileAndSpacesScreen
 import com.example.ui.screens.QuickCaptureScreen
+import com.example.ui.screens.ThemeCustomizerDialog
 import com.example.ui.screens.TimelineScreen
 import com.example.ui.theme.CardBorderSlate
 import com.example.ui.theme.DeepCharcoal
 import com.example.ui.theme.DeepVioletContainer
 import com.example.ui.theme.ElectricBlue
-import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SoftViolet
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.buildAccentGradientBrush
+import com.example.ui.theme.buildAppBackgroundBrush
 import com.example.ui.viewmodel.DataUiState
+import com.example.ui.viewmodel.GoogleAuthViewModel
 import com.example.ui.viewmodel.MemoryViewModel
-import com.example.util.authStateFlow
 import com.example.util.configureAppCheck
-import com.example.util.signOutUser
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
@@ -106,12 +119,18 @@ class MainActivity : ComponentActivity() {
         // STEP 1: Mandatory App Check configuration before UI or ViewModels
         configureAppCheck(this, intent)
 
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#0E0F14")),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.parseColor("#161821"))
+        )
         setContent {
             MyApplicationTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding(),
+                    color = DeepCharcoal
                 ) {
                     WhereDidItGoRoot()
                 }
@@ -121,18 +140,22 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WhereDidItGoRoot(auth: FirebaseAuth = Firebase.auth) {
-    val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
-    val user = currentUser
+fun WhereDidItGoRoot(
+    auth: FirebaseAuth = Firebase.auth,
+    authViewModel: GoogleAuthViewModel = viewModel(factory = GoogleAuthViewModel.factory(auth))
+) {
+    val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val user = authUiState.currentUser
 
     if (user == null) {
-        AuthScreen(onAuthSuccess = {})
+        AuthScreen(authViewModel = authViewModel)
     } else {
         AuthenticatedAppShell(
             userId = user.uid,
             userName = user.displayName ?: "Memory Explorer",
             userEmail = user.email ?: "",
-            userPhotoUrl = user.photoUrl?.toString() ?: ""
+            userPhotoUrl = user.photoUrl?.toString() ?: "",
+            authViewModel = authViewModel
         )
     }
 }
@@ -142,10 +165,10 @@ fun AuthenticatedAppShell(
     userId: String,
     userName: String,
     userEmail: String,
-    userPhotoUrl: String
+    userPhotoUrl: String,
+    authViewModel: GoogleAuthViewModel = viewModel(factory = GoogleAuthViewModel.factory())
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val credentialManager = remember(context) { CredentialManager.create(context) }
 
     val viewModel: MemoryViewModel = viewModel(
@@ -174,6 +197,11 @@ fun AuthenticatedAppShell(
     var currentTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var openCameraInitially by rememberSaveable { mutableStateOf(false) }
     var memoryBeingEdited by remember { mutableStateOf<MemoryRecord?>(null) }
+    var showThemeStudio by rememberSaveable { mutableStateOf(false) }
+
+    if (showThemeStudio) {
+        ThemeCustomizerDialog(onDismiss = { showThemeStudio = false })
+    }
 
     if (memoryBeingEdited != null) {
         val target = memoryBeingEdited!!
@@ -194,45 +222,62 @@ fun AuthenticatedAppShell(
         )
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(buildAppBackgroundBrush())
+    ) {
         val isWideScreen = maxWidth >= 720.dp
 
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
-            containerColor = DeepCharcoal,
+            containerColor = Color.Transparent,
+            topBar = {
+                AppTopHeaderBar(
+                    userName = userProfile?.displayName ?: userName,
+                    onOpenThemeStudio = { showThemeStudio = true },
+                    onAvatarClick = { currentTab = AppTab.PROFILE }
+                )
+            },
             bottomBar = {
                 if (!isWideScreen) {
-                    NavigationBar(
-                        containerColor = ElevatedSlate,
-                        tonalElevation = 8.dp
+                    Surface(
+                        color = ElevatedSlate.copy(alpha = 0.96f),
+                        tonalElevation = 10.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderSlate)
                     ) {
-                        AppTab.entries.forEach { tab ->
-                            val selected = currentTab == tab
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = { currentTab = tab },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                        contentDescription = tab.label
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = tab.label,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = SoftViolet,
-                                    selectedTextColor = SoftViolet,
-                                    indicatorColor = DeepVioletContainer,
-                                    unselectedIconColor = TextSecondary,
-                                    unselectedTextColor = TextSecondary
-                                ),
-                                modifier = Modifier.testTag(tab.tag)
-                            )
+                        NavigationBar(
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp
+                        ) {
+                            AppTab.entries.forEach { tab ->
+                                val selected = currentTab == tab
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = { currentTab = tab },
+                                    icon = {
+                                        Icon(
+                                            imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
+                                            contentDescription = tab.label
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            text = tab.label,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = SoftViolet,
+                                        selectedTextColor = SoftViolet,
+                                        indicatorColor = DeepVioletContainer,
+                                        unselectedIconColor = TextSecondary,
+                                        unselectedTextColor = TextSecondary
+                                    ),
+                                    modifier = Modifier.testTag(tab.tag)
+                                )
+                            }
                         }
                     }
                 }
@@ -245,7 +290,7 @@ fun AuthenticatedAppShell(
             ) {
                 if (isWideScreen) {
                     NavigationRail(
-                        containerColor = ElevatedSlate,
+                        containerColor = ElevatedSlate.copy(alpha = 0.92f),
                         modifier = Modifier.fillMaxHeight()
                     ) {
                         Spacer(modifier = Modifier.weight(0.2f))
@@ -285,7 +330,8 @@ fun AuthenticatedAppShell(
                     AnimatedVisibility(visible = !statusBanner.isNullOrBlank()) {
                         Surface(
                             color = DeepVioletContainer,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, buildAccentGradientBrush()),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp, vertical = 8.dp)
@@ -297,11 +343,11 @@ fun AuthenticatedAppShell(
                                 Text(
                                     text = statusBanner ?: "",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White,
+                                    color = TextPrimary,
                                     modifier = Modifier.weight(1f)
                                 )
                                 TextButton(onClick = { viewModel.clearStatusBanner() }) {
-                                    Text("Dismiss", color = ElectricBlue)
+                                    Text("Dismiss", color = ElectricBlue, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -327,6 +373,7 @@ fun AuthenticatedAppShell(
                                     openCameraInitially = true
                                     currentTab = AppTab.ADD
                                 },
+                                onOpenThemeStudio = { showThemeStudio = true },
                                 onViewAllMemoriesClick = { currentTab = AppTab.MEMORIES },
                                 onViewBorrowedClick = { currentTab = AppTab.BORROWED },
                                 onEditMemory = { memoryBeingEdited = it },
@@ -409,17 +456,127 @@ fun AuthenticatedAppShell(
                                     viewModel.showStatusMessage(msg)
                                 },
                                 onSignOut = {
-                                    signOutUser(
+                                    authViewModel.signOut(
                                         context = context,
-                                        credentialManager = credentialManager,
-                                        onSignOutComplete = {},
-                                        scope = coroutineScope
+                                        credentialManager = credentialManager
                                     )
                                 },
                                 onNavigateBack = { currentTab = AppTab.HOME }
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppTopHeaderBar(
+    userName: String,
+    onOpenThemeStudio: () -> Unit,
+    onAvatarClick: () -> Unit
+) {
+    Surface(
+        color = ElevatedSlate.copy(alpha = 0.88f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, CardBorderSlate),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(buildAccentGradientBrush()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Where'd It Go?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "AI Memory Vault",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = SoftViolet
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Quick Theme & Gradient Customizer Button
+                Surface(
+                    onClick = onOpenThemeStudio,
+                    color = DeepVioletContainer,
+                    shape = RoundedCornerShape(50),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, buildAccentGradientBrush()),
+                    modifier = Modifier.testTag("open_theme_studio_button")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(buildAccentGradientBrush())
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = "Customize Theme & Gradients",
+                            tint = SoftViolet,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Theme",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // User Avatar Badge
+                val initial = userName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "M"
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(buildAccentGradientBrush())
+                        .border(1.5.dp, CardBorderSlate, CircleShape)
+                        .clickable { onAvatarClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

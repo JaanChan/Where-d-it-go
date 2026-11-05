@@ -35,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +46,7 @@ import com.example.ui.theme.CardSlate
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.SoftViolet
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
 @Composable
@@ -98,7 +98,7 @@ fun TimelineScreen(
                 Text(
                     text = "Memory Timeline",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -221,7 +221,7 @@ fun TimelineScreen(
                         Text(
                             text = "No Matching Memories Found",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))

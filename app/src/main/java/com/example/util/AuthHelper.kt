@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-private const val TAG = "AuthHelper"
+private const val TAG = "Auth"
 
 tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -118,29 +118,20 @@ fun onGoogleSignInClicked(
         return
     }
 
-    val activityContext = context.findActivity() ?: context
+    val activityContext = context.findActivity()
+    if (activityContext == null) {
+        onAuthError("Unable to launch Google Sign-In: Activity context required")
+        return
+    }
+
     val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
-    val primaryRequest = GetCredentialRequest.Builder()
+    val request = GetCredentialRequest.Builder()
         .addCredentialOption(signInOption)
         .build()
 
     scope.launch {
         try {
-            val result = try {
-                credentialManager.getCredential(activityContext, primaryRequest)
-            } catch (primaryErr: NoCredentialException) {
-                Log.w(TAG, "Primary GetSignInWithGoogleOption returned NoCredentialException, retrying with unfiltered GetGoogleIdOption", primaryErr)
-                val fallbackGoogleIdOption = GetGoogleIdOption.Builder()
-                    .setFilterByAuthorizedAccounts(false)
-                    .setServerClientId(clientId)
-                    .setAutoSelectEnabled(false)
-                    .build()
-                val fallbackRequest = GetCredentialRequest.Builder()
-                    .addCredentialOption(fallbackGoogleIdOption)
-                    .build()
-                credentialManager.getCredential(activityContext, fallbackRequest)
-            }
-
+            val result = credentialManager.getCredential(activityContext, request)
             val credential = result.credential
             if (credential is CustomCredential && credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 val googleIdToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
@@ -148,24 +139,19 @@ fun onGoogleSignInClicked(
                 Firebase.auth.signInWithCredential(authCredential).await()
                 onAuthSuccess()
             } else {
-                onAuthError("Unexpected credential type returned.")
+                onAuthError("Unexpected credential type")
             }
         } catch (e: GetCredentialCancellationException) {
-            val msg = e.message.orEmpty()
-            Log.w(TAG, "Google Sign-In flow cancelled or dismissed: $msg", e)
-            if (msg.contains("28444") || msg.contains("Developer console", ignoreCase = true)) {
-                onAuthError("Google Sign-In failed: APK signing key mismatch ($msg). Please download the newly rebuilt APK from GitHub Actions.")
-            } else {
-                onAuthCancelled()
-            }
+            Log.w(TAG, "Google Sign-In cancelled or dismissed: ${e.message}", e)
+            onAuthCancelled()
         } catch (e: NoCredentialException) {
             Log.e(TAG, "No Google account found on device", e)
-            onAuthError("No Google account found on this device. Please add a Google account in your phone's Settings > Accounts and try again.")
+            onAuthError("No Google account found on this device. Please add a Google account in Settings and try again.")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Google Sign-In failed", e)
-            onAuthError(e.localizedMessage ?: "Sign in failed. Please try again.")
+            onAuthError(e.localizedMessage ?: "Sign in failed")
         }
     }
 }

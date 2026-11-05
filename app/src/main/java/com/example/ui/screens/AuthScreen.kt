@@ -1,8 +1,10 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,12 +40,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -53,51 +55,47 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.R
 import com.example.ui.theme.CardBorderSlate
 import com.example.ui.theme.CardSlate
 import com.example.ui.theme.CoralError
-import com.example.ui.theme.DeepCharcoal
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.SoftViolet
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.util.attemptAutoSignIn
-import com.example.util.onGoogleSignInClicked
+import com.example.ui.theme.buildAccentGradientBrush
+import com.example.ui.theme.buildAppBackgroundBrush
+import com.example.ui.viewmodel.GoogleAuthViewModel
 
 @Composable
 fun AuthScreen(
-    onAuthSuccess: () -> Unit
+    authViewModel: GoogleAuthViewModel = viewModel(factory = GoogleAuthViewModel.factory()),
+    onAuthSuccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val credentialManager = remember(context) { CredentialManager.create(context) }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var autoSignInJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
+    var showThemeStudio by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        autoSignInJob = attemptAutoSignIn(
+        authViewModel.attemptAutoSignIn(
             context = context,
             credentialManager = credentialManager,
-            onAuthSuccess = onAuthSuccess,
-            onUnauthenticated = {},
-            scope = coroutineScope
+            onAuthSuccess = onAuthSuccess
         )
+    }
+
+    if (showThemeStudio) {
+        ThemeCustomizerDialog(onDismiss = { showThemeStudio = false })
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF151226),
-                        DeepCharcoal,
-                        DeepCharcoal
-                    )
-                )
-            )
+            .background(buildAppBackgroundBrush())
             .systemBarsPadding(),
         contentAlignment = Alignment.Center
     ) {
@@ -106,26 +104,74 @@ fun AuthScreen(
                 .fillMaxWidth()
                 .widthIn(max = 520.dp)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_memory_vault_hero),
-                contentDescription = "Where'd It Go Memory Vault Illustration",
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = CardSlate.copy(alpha = 0.85f),
+                    border = BorderStroke(1.dp, ElectricViolet.copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable { showThemeStudio = true }
+                        .testTag("auth_theme_studio_button")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(buildAccentGradientBrush()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = "Customize Theme and Gradient",
+                                tint = Color.White,
+                                modifier = Modifier.size(11.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Theme & Gradient",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(170.dp)
+                    .height(175.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .border(1.dp, CardBorderSlate, RoundedCornerShape(24.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .border(1.5.dp, buildAccentGradientBrush(), RoundedCornerShape(24.dp))
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_memory_vault_hero),
+                    contentDescription = "Where'd It Go Memory Vault Illustration",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Surface(
                 color = ElectricViolet.copy(alpha = 0.16f),
                 shape = RoundedCornerShape(50),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ElectricViolet.copy(alpha = 0.4f))
+                border = BorderStroke(1.dp, ElectricViolet.copy(alpha = 0.4f))
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -147,12 +193,12 @@ fun AuthScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text = "WHERE'D IT GO?",
                 style = MaterialTheme.typography.displaySmall,
-                color = Color.White,
+                color = TextPrimary,
                 textAlign = TextAlign.Center
             )
 
@@ -165,7 +211,7 @@ fun AuthScreen(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
                 text = "Save where something is once using text, live speech, or a quick photo. Ask naturally whenever you need to find it.",
@@ -174,7 +220,7 @@ fun AuthScreen(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -197,9 +243,9 @@ fun AuthScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            if (!errorMessage.isNullOrBlank()) {
+            if (!authUiState.errorMessage.isNullOrBlank()) {
                 Surface(
                     color = CoralError.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(14.dp),
@@ -208,7 +254,7 @@ fun AuthScreen(
                         .padding(bottom = 16.dp)
                 ) {
                     Text(
-                        text = errorMessage ?: "",
+                        text = authUiState.errorMessage ?: "",
                         color = CoralError,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(14.dp),
@@ -217,51 +263,46 @@ fun AuthScreen(
                 }
             }
 
-            Button(
-                onClick = {
-                    autoSignInJob?.cancel()
-                    isLoading = true
-                    errorMessage = null
-                    onGoogleSignInClicked(
-                        context = context,
-                        credentialManager = credentialManager,
-                        onAuthSuccess = {
-                            isLoading = false
-                            onAuthSuccess()
-                        },
-                        onAuthError = { msg ->
-                            isLoading = false
-                            errorMessage = msg
-                        },
-                        scope = coroutineScope,
-                        onAuthCancelled = {
-                            isLoading = false
-                        }
-                    )
-                },
-                enabled = !isLoading,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ElectricViolet,
-                    contentColor = Color.White
-                ),
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .testTag("google_sign_in_button")
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(buildAccentGradientBrush())
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.5.dp
-                    )
-                } else {
-                    Text(
-                        text = "Sign in with Google",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                Button(
+                    onClick = {
+                        authViewModel.signInWithGoogle(
+                            context = context,
+                            credentialManager = credentialManager,
+                            onAuthSuccess = onAuthSuccess
+                        )
+                    },
+                    enabled = !authUiState.isLoading,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        disabledContainerColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("google_sign_in_button")
+                ) {
+                    if (authUiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White,
+                            strokeWidth = 2.5.dp
+                        )
+                    } else {
+                        Text(
+                            text = "Sign in with Google",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
@@ -275,9 +316,9 @@ private fun FeatureRow(
     subtitle: String
 ) {
     Surface(
-        color = CardSlate,
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderSlate),
+        color = CardSlate.copy(alpha = 0.9f),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, CardBorderSlate),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -286,15 +327,15 @@ private fun FeatureRow(
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(ElectricViolet.copy(alpha = 0.18f)),
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(buildAccentGradientBrush()),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = SoftViolet,
+                    tint = Color.White,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -303,7 +344,7 @@ private fun FeatureRow(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(

@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Notifications
@@ -66,13 +65,14 @@ import com.example.ui.theme.CardBorderSlate
 import com.example.ui.theme.CardSlate
 import com.example.ui.theme.CoralError
 import com.example.ui.theme.DeepBlueContainer
-import com.example.ui.theme.DeepVioletContainer
 import com.example.ui.theme.ElectricBlue
 import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.MintSuccess
 import com.example.ui.theme.SoftViolet
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.buildAccentGradientBrush
 import com.example.util.MemoryNotificationHelper
 
 @Composable
@@ -125,7 +125,7 @@ fun ProfileAndSpacesScreen(
         AlertDialog(
             onDismissRequest = { showCreateSpaceDialog = false },
             containerColor = ElevatedSlate,
-            title = { Text("Create Shared Memory Space", color = Color.White) },
+            title = { Text("Create Shared Memory Space", color = TextPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
@@ -164,7 +164,7 @@ fun ProfileAndSpacesScreen(
                         }
                     },
                     enabled = spaceName.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet),
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet, contentColor = Color.White),
                     modifier = Modifier.testTag("confirm_create_space_button")
                 ) {
                     Text("Create Space")
@@ -183,7 +183,7 @@ fun ProfileAndSpacesScreen(
         AlertDialog(
             onDismissRequest = { showJoinByCodeDialog = false },
             containerColor = ElevatedSlate,
-            title = { Text("Join Space via Invite Code", color = Color.White) },
+            title = { Text("Join Space via Invite Code", color = TextPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
@@ -212,7 +212,7 @@ fun ProfileAndSpacesScreen(
                         }
                     },
                     enabled = code.length >= 4,
-                    colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue, contentColor = Color(0xFF0B0D13)),
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue, contentColor = Color.White),
                     modifier = Modifier.testTag("confirm_join_space_button")
                 ) {
                     Text("Join Space", fontWeight = FontWeight.Bold)
@@ -232,7 +232,7 @@ fun ProfileAndSpacesScreen(
         AlertDialog(
             onDismissRequest = { spaceForEmailInvite = null },
             containerColor = ElevatedSlate,
-            title = { Text("Invite to ${target.name}", color = Color.White) },
+            title = { Text("Invite to ${target.name}", color = TextPrimary) },
             text = {
                 OutlinedTextField(
                     value = email,
@@ -252,7 +252,7 @@ fun ProfileAndSpacesScreen(
                         }
                     },
                     enabled = email.contains("@"),
-                    colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet)
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet, contentColor = Color.White)
                 ) {
                     Text("Send Invite")
                 }
@@ -276,8 +276,8 @@ fun ProfileAndSpacesScreen(
         item {
             Surface(
                 color = CardSlate,
-                shape = RoundedCornerShape(20.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderSlate),
+                shape = RoundedCornerShape(22.dp),
+                border = androidx.compose.foundation.BorderStroke(1.2.dp, buildAccentGradientBrush()),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -293,13 +293,13 @@ fun ProfileAndSpacesScreen(
                             modifier = Modifier
                                 .size(54.dp)
                                 .clip(CircleShape)
-                                .background(DeepVioletContainer),
+                                .background(buildAccentGradientBrush()),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
-                                tint = SoftViolet,
+                                tint = Color.White,
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -308,7 +308,7 @@ fun ProfileAndSpacesScreen(
                             Text(
                                 text = userName.ifBlank { "Memory Explorer" },
                                 style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                             if (userEmail.isNotBlank()) {
@@ -333,19 +333,24 @@ fun ProfileAndSpacesScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sign Out", color = CoralError)
+                        Text("Sign Out", color = CoralError, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
-        // 2. Shared Memory Spaces Header & Actions
+        // 2. Theme, Color & Gradient Customizer Studio Card
+        item {
+            ThemeCustomizerCard()
+        }
+
+        // 3. Shared Memory Spaces Header & Actions
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = "Shared Household Memory Spaces",
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -359,7 +364,7 @@ fun ProfileAndSpacesScreen(
                 ) {
                     Button(
                         onClick = { showCreateSpaceDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet),
+                        colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet, contentColor = Color.White),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
                             .weight(1f)
@@ -412,7 +417,7 @@ fun ProfileAndSpacesScreen(
                                     Text(
                                         text = invitedSpace.name,
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = Color.White,
+                                        color = TextPrimary,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
@@ -425,7 +430,7 @@ fun ProfileAndSpacesScreen(
                                     onClick = { onAcceptEmailInvite(invitedSpace) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MintSuccess,
-                                        contentColor = Color(0xFF0B0D13)
+                                        contentColor = Color.White
                                     )
                                 ) {
                                     Text("Accept", fontWeight = FontWeight.Bold)
@@ -460,7 +465,7 @@ fun ProfileAndSpacesScreen(
                         Text(
                             text = "No Shared Spaces Yet",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -492,7 +497,7 @@ fun ProfileAndSpacesScreen(
                                 Text(
                                     text = space.name,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
+                                    color = TextPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
@@ -557,7 +562,7 @@ fun ProfileAndSpacesScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Invite by Email", color = Color.White)
+                                Text("Invite by Email", color = TextPrimary)
                             }
                         }
                     }
@@ -565,7 +570,7 @@ fun ProfileAndSpacesScreen(
             }
         }
 
-        // 3. Notification Preferences
+        // 4. Notification Preferences
         item {
             Surface(
                 color = CardSlate,
@@ -588,7 +593,7 @@ fun ProfileAndSpacesScreen(
                         Text(
                             text = "Notification Preferences",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -638,7 +643,7 @@ fun ProfileAndSpacesScreen(
                             .fillMaxWidth()
                             .testTag("send_summary_notification_button")
                     ) {
-                        Text("Send Memory Summary Notification Now", color = ElectricBlue)
+                        Text("Send Memory Summary Notification Now", color = ElectricBlue, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -662,7 +667,7 @@ private fun PreferenceSwitchRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                color = Color.White,
+                color = TextPrimary,
                 fontWeight = FontWeight.SemiBold
             )
             Text(

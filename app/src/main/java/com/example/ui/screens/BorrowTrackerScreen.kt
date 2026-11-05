@@ -64,6 +64,7 @@ import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.MintSuccess
 import com.example.ui.theme.SoftViolet
 import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.util.MemoryNotificationHelper
 import java.text.SimpleDateFormat
@@ -146,7 +147,7 @@ fun BorrowTrackerScreen(
                     Text(
                         text = "Borrow Tracker",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -158,13 +159,13 @@ fun BorrowTrackerScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Button(
                     onClick = { showAddDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet),
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet, contentColor = Color.White),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.testTag("open_add_borrow_dialog_button")
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Lend Item")
+                    Text("Lend Item", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -224,7 +225,7 @@ fun BorrowTrackerScreen(
                         Text(
                             text = "No Borrowed Items in This View",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -333,7 +334,7 @@ private fun BorrowedItemCard(
                         Text(
                             text = item.itemName,
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         val statusColor = when {
@@ -409,7 +410,7 @@ private fun BorrowedItemCard(
                     onClick = onToggleReturned,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (item.isReturned) ElevatedSlate else MintSuccess,
-                        contentColor = if (item.isReturned) TextSecondary else Color(0xFF0B0D13)
+                        contentColor = if (item.isReturned) TextSecondary else Color.White
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
@@ -441,7 +442,7 @@ private fun BorrowedItemCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Remind", color = Color.White)
+                        Text("Remind", color = TextPrimary)
                     }
                 }
             }
@@ -475,7 +476,7 @@ private fun AddBorrowedItemDialog(
             Text(
                 text = "Record Lent Item",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White
+                color = TextPrimary
             )
         },
         text = {
@@ -548,7 +549,7 @@ private fun AddBorrowedItemDialog(
                     }
                 },
                 enabled = itemName.isNotBlank() && borrowerName.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet),
+                colors = ButtonDefaults.buttonColors(containerColor = ElectricViolet, contentColor = Color.White),
                 modifier = Modifier.testTag("save_borrowed_item_button")
             ) {
                 Text("Save Record")

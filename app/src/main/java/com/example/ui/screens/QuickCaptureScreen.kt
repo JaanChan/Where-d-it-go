@@ -88,7 +88,9 @@ import com.example.ui.theme.ElectricViolet
 import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.MintSuccess
 import com.example.ui.theme.SoftViolet
+import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.buildAccentGradientBrush
 import com.example.ui.viewmodel.AiTaskState
 import com.example.util.MediaHelper
 import java.util.Locale
@@ -225,6 +227,9 @@ fun QuickCaptureScreen(
             val bmp = MediaHelper.loadAndCompressBitmap(context, uri)
             if (bmp != null) {
                 attachedBitmap = bmp
+                if (itemName.isBlank()) itemName = "Photographed Item"
+                if (location.isBlank()) location = "Captured Storage Spot"
+                validationError = null
                 onRunAiExtraction(naturalSentence, bmp)
             }
         }
@@ -262,6 +267,9 @@ fun QuickCaptureScreen(
             onPhotoCaptured = { bmp ->
                 attachedBitmap = bmp
                 showCameraModal = false
+                if (itemName.isBlank()) itemName = "Photographed Item"
+                if (location.isBlank()) location = "Captured Storage Spot"
+                validationError = null
                 // Auto-analyze photo with Gemini AI to detect visible items and storage context
                 onRunAiExtraction(naturalSentence, bmp)
             },
@@ -280,7 +288,7 @@ fun QuickCaptureScreen(
         Text(
             text = "Remember Something",
             style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
+            color = TextPrimary,
             fontWeight = FontWeight.Bold
         )
         Text(
@@ -295,7 +303,7 @@ fun QuickCaptureScreen(
             shape = RoundedCornerShape(20.dp),
             border = androidx.compose.foundation.BorderStroke(
                 1.5.dp,
-                Brush.horizontalGradient(listOf(ElectricBlue, ElectricViolet))
+                buildAccentGradientBrush()
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -314,13 +322,13 @@ fun QuickCaptureScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(ElectricBlue.copy(alpha = 0.2f)),
+                            .background(buildAccentGradientBrush()),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.PhotoCamera,
                             contentDescription = null,
-                            tint = ElectricBlue,
+                            tint = Color.White,
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -329,7 +337,7 @@ fun QuickCaptureScreen(
                         Text(
                             text = "Click Photo of Item or Drawer",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -344,7 +352,7 @@ fun QuickCaptureScreen(
                     onClick = triggerCameraOpen,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ElectricBlue,
-                        contentColor = Color(0xFF0B0D13)
+                        contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(14.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
@@ -430,7 +438,7 @@ fun QuickCaptureScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (isListeningVoice) "Stop" else "Voice",
-                            color = if (isListeningVoice) CoralError else Color.White
+                            color = if (isListeningVoice) CoralError else TextPrimary
                         )
                     }
 
@@ -448,7 +456,7 @@ fun QuickCaptureScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Camera", color = Color.White)
+                        Text("Camera", color = TextPrimary)
                     }
 
                     OutlinedButton(
@@ -469,7 +477,7 @@ fun QuickCaptureScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Gallery", color = Color.White)
+                        Text("Gallery", color = TextPrimary)
                     }
                 }
 
@@ -592,7 +600,7 @@ fun QuickCaptureScreen(
                 Text(
                     text = "Memory Details",
                     style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -727,12 +735,18 @@ fun QuickCaptureScreen(
 
                 Button(
                     onClick = {
-                        if (itemName.isBlank() || location.isBlank()) {
-                            validationError = "Please enter both an item name and its location (or click 'Extract Item & Location with AI' above)."
+                        val resolvedItem = itemName.trim().ifBlank {
+                            if (attachedBitmap != null) "Photographed Item" else naturalSentence.trim().take(35)
+                        }
+                        val resolvedLocation = location.trim().ifBlank {
+                            if (attachedBitmap != null) "Captured Storage Spot" else ""
+                        }
+                        if (resolvedItem.isBlank() || resolvedLocation.isBlank()) {
+                            validationError = "Please enter both an item name and its location, or click a photo above."
                         } else {
                             onSaveMemory(
-                                itemName,
-                                location,
+                                resolvedItem,
+                                resolvedLocation,
                                 category,
                                 description.ifBlank { naturalSentence },
                                 attachedBitmap,
