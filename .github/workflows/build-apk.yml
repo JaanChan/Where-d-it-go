@@ -2,7 +2,8 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "**" ]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -12,27 +13,91 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Gradle
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK Licenses & Install Android 36.1 Platform
+        run: |
+          yes | sdkmanager --licenses || true
+          echo "y" | sdkmanager --update || true
+          echo "y" | sdkmanager "platforms;android-36" "platforms;android-36.1" "build-tools;36.0.0"
+
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
 
-      - name: Decode debug.keystore if needed
+      - name: Prepare .env, debug.keystore, and google-services.json
         run: |
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
+          fi
           if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
-          elif [ ! -f debug.keystore ]; then
-            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+            base64 -i -d debug.keystore.base64 > debug.keystore || base64 -d debug.keystore.base64 > debug.keystore
+          fi
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          if [ ! -f app/google-services.json ]; then
+            cat << 'EOF' > app/google-services.json
+          {
+            "project_info": {
+              "project_number": "435065094913",
+              "project_id": "gen-lang-client-0744694157",
+              "storage_bucket": "gen-lang-client-0744694157.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:435065094913:android:1e1c44b64004badb44d100",
+                  "android_client_info": {
+                    "package_name": "com.aistudio.whereditgo.mvkxqp"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "435065094913-u7r7soe2dctf0918muspgq13kbsrru6h.apps.googleusercontent.com",
+                    "client_type": 1,
+                    "android_info": {
+                      "package_name": "com.aistudio.whereditgo.mvkxqp",
+                      "certificate_hash": "5fe5248892868582458c39791cfd686fa11e0f29"
+                    }
+                  },
+                  {
+                    "client_id": "435065094913-oc2th0hrd0sf0fomahkes940dmhku56l.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyB9NuRlci5UXavrOegnTc5njE81i1iXmD8"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "435065094913-oc2th0hrd0sf0fomahkes940dmhku56l.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
           fi
 
       - name: Build Debug APK
-        run: gradle :app:assembleDebug
+        run: gradle :app:assembleDebug --no-daemon --no-configuration-cache --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
